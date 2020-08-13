@@ -1,0 +1,65 @@
+#!/bin/zsh
+
+# Source (fixed) and destination (parameter)
+source_kebab_mixed=New-Component # Source, "New-Component"
+dest_kebab_mixed=${1:-My-View} # Destination "My-View"
+
+# Naming styles
+source_camel_mixed=${source_kebab_mixed//\-/} # "NewComponent"
+dest_camel_mixed=${dest_kebab_mixed//\-/}
+
+source_kebab=$source_kebab_mixed:l # "new-component"
+dest_kebab=$dest_kebab_mixed:l
+
+source_lower=${source_kebab//\-/} # "newcomponent"
+dest_lower=${dest_kebab//\-/}
+
+# Unused naming styles
+source_spaces=${source_kebab//\-/\ } # "new component"
+dest_spaces=${dest_kebab//\-/\ }
+
+source_spaces_title=${(C)source_spaces} # "New Component"
+dest_spaces_title=${(C)dest_spaces}
+
+source_camel=${source_spaces_title//\ /} # "NewComponent"
+dest_camel=${dest_spaces_title//\ /}
+
+source_pascal=${source_lower:0:1}${source_camel:1}  # "newComponent", unused
+dest_pascal=${dest_lower:0:1}${dest_camel:1}
+
+dest_dir=swiftuilib-${dest_kebab}
+
+# Clone template
+cp -R -p . ../$dest_dir
+cd ../$dest_dir
+
+# Clean up
+
+rm -rf .DS_Store .git bin README.md  .swiftpm/xcode/xcuserdata .swiftpm/xcode/package.xcworkspace/xcuserdata
+
+find . -type f -name '*.DS_Store' -delete
+
+mv README.template.md README.md # Restore readme with template
+
+# Change contents
+
+replaceContent () {
+  find . -type f ! \( -name '*.gif' -o -name '*.gpg' -o -path './\.git/*' -o -path './bin/*' -o -path '*/xcuserdata/*' \) -exec sed -i '' -e "s/$1/$2/g" {} +
+}
+
+replaceContent ${source_camel_mixed} ${dest_camel_mixed}
+replaceContent ${source_lower} ${dest_lower}
+replaceContent ${source_kebab} ${dest_kebab}
+replaceContent ${source_spaces_title} ${dest_spaces_title}
+
+# Change file and folder names
+autoload zmv
+setopt EXTENDED_GLOB
+zmv "(**/)(*$source_camel_mixed*)(#qD)" "\$1\${2//$source_camel_mixed/$dest_camel_mixed}"
+
+# Print verification script
+echo "# Verify using the following lines:"
+echo
+echo "cd ../${dest_dir} &&"
+echo "    grep -r -E -i '(${source_kebab}|${source_lower}|${source_spaces_title})' . &&"
+echo "    autoload zmv && setopt EXTENDED_GLOB && zmv -n '(**/)(*$source_camel_mixed*)(#qD)' '\$1\${2//$source_camel_mixed/$dest_camel_mixed}'"
